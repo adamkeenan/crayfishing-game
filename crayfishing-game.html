@@ -505,6 +505,11 @@
       <div id="g-waiting-msg" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
       <button class="btn btn-blue" id="g-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
     </div>
+    <!-- Player submitted waiting message -->
+    <div id="g-player-submitted-wait" style="display:none" class="waiting-spinner">
+      <div class="spin">⚙️</div>
+      <p style="margin-top:8px">Waiting for host to advance the day...</p>
+    </div>
   </div>
 
   <!-- Result -->
@@ -513,13 +518,18 @@
     <div class="weather-box" id="g-result-weather"></div>
     <div class="result-box show" id="g-result-text"></div>
     <br>
+    <!-- Player: tap ready then wait for host -->
+    <div id="g-result-player-controls" style="display:none">
+      <button class="btn btn-go" id="g-result-ready-btn" onclick="playerReady()">✅ I'm Ready!</button>
+      <div id="g-result-player-wait" class="waiting-spinner" style="display:none">
+        <div class="spin">⚙️</div>
+        <p style="margin-top:8px">Waiting for host to start next day...</p>
+      </div>
+    </div>
+    <!-- Host: see who is ready then advance -->
     <div id="g-result-host-controls" style="display:none">
       <div id="g-result-waiting" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
       <button class="btn btn-blue" id="g-result-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
-    </div>
-    <div id="g-result-player-wait" style="display:none" class="waiting-spinner">
-      <div class="spin">⚙️</div>
-      <p style="margin-top:8px">Waiting for host to start next day...</p>
     </div>
   </div>
 
@@ -830,9 +840,18 @@ async function gamePoll() {
     return;
   }
 
-  // Day advanced by host
+  // Day advanced by host - open next round for everyone
   if (game.day > state.day) {
-    processDayResult(game, players);
+    state.day = game.day;
+    state.submitted = false;
+    const me = players.find(p => p.id === myPlayerId);
+    if (me) {
+      state.money = me.money;
+      state.pots = me.pots;
+    }
+    lastWeather = game.last_weather;
+    showPotsCard();
+    updateDisplay();
   }
 }
 
@@ -846,6 +865,10 @@ async function submitTurn() {
   document.getElementById('g-fish-btn').disabled = true;
   document.getElementById('g-fish-btn').textContent = '✅ Ready!';
 
+  if (!isHost) {
+    document.getElementById('g-player-submitted-wait').style.display = 'block';
+  }
+
   await dbUpdate('cray_players', 'id=eq.' + myPlayerId, {
     submitted: true,
     day_inside: state.potsInside,
@@ -854,6 +877,16 @@ async function submitTurn() {
     pots: state.pots,
     money: state.money
   });
+}
+
+// ============================================================
+// PLAYER: MARK READY FOR NEXT DAY
+// ============================================================
+async function playerReady() {
+  document.getElementById('g-result-ready-btn').disabled = true;
+  document.getElementById('g-result-ready-btn').textContent = '✅ Ready!';
+  document.getElementById('g-result-player-wait').style.display = 'block';
+  await dbUpdate('cray_players', 'id=eq.' + myPlayerId, { submitted: true });
 }
 
 // ============================================================
@@ -954,14 +987,25 @@ async function processDayResult(game, players) {
   document.getElementById('g-pots-card').style.display = 'none';
   document.getElementById('g-shop-card').style.display = 'none';
   document.getElementById('g-result-card').style.display = 'block';
+  document.getElementById('g-player-submitted-wait').style.display = 'none';
 
   // Re-enable fishing button for next day
   document.getElementById('g-fish-btn').disabled = false;
   document.getElementById('g-fish-btn').textContent = '🎣 Go Fishing!';
 
-  updateDisplay();
+  // Show correct controls
+  if (isHost) {
+    document.getElementById('g-result-host-controls').style.display = 'block';
+    document.getElementById('g-result-player-controls').style.display = 'none';
+  } else {
+    document.getElementById('g-result-player-controls').style.display = 'block';
+    document.getElementById('g-result-host-controls').style.display = 'none';
+    document.getElementById('g-result-ready-btn').disabled = false;
+    document.getElementById('g-result-ready-btn').textContent = '✅ I\'m Ready!';
+    document.getElementById('g-result-player-wait').style.display = 'none';
+  }
 
-  // If game ended, poll will handle it
+  updateDisplay();
 }
 
 // ============================================================
