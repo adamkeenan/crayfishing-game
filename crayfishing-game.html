@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crayfishing Game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ocean: #0077b6;
+    --deep: #023e8a;
+    --sky: #90e0ef;
+    --sand: #f4a261;
+    --sun: #ffd60a;
+    --green: #2dc653;
+    --red: #e63946;
+    --white: #ffffff;
+    --light: #caf0f8;
+    --dark: #03045e;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(180deg, #90e0ef 0%, #0077b6 50%, #023e8a 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    color: var(--dark);
+  }
+
+  h1 {
+    font-family: 'Cabin Sketch', cursive;
+    color: var(--white);
+    font-size: 2.8rem;
+    text-shadow: 3px 3px 0px var(--deep);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    color: var(--sky);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 680px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.4rem;
+    color: var(--ocean);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .stat-box {
+    background: var(--light);
+    border-radius: 14px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--ocean);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .stat-value {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.8rem;
+    color: var(--dark);
+    line-height: 1.1;
+  }
+
+  .stat-value.money { color: var(--green); }
+  .stat-value.day { color: var(--ocean); }
+
+  .weather-box {
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+  }
+
+  .weather-good { background: linear-gradient(135deg, #ffd60a, #f4a261); color: var(--dark); }
+  .weather-bad { background: linear-gradient(135deg, #adb5bd, #6c757d); color: white; }
+
+  .pots-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .pot-box {
+    border: 3px solid var(--light);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .pot-box label {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--ocean);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .pot-hint { font-size: 0.72rem; color: #888; margin-top: 4px; }
+
+  .counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .counter-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%; border: none;
+    font-size: 1.3rem; font-weight: 800;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: transform 0.1s;
+  }
+
+  .counter-btn:active { transform: scale(0.9); }
+  .counter-btn.plus { background: var(--green); color: white; }
+  .counter-btn.minus { background: var(--red); color: white; }
+
+  .counter-val {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.8rem; color: var(--dark);
+    min-width: 36px; text-align: center;
+  }
+
+  .btn {
+    width: 100%; padding: 16px; border: none;
+    border-radius: 14px;
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.3rem; cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn:active { transform: scale(0.97); }
+  .btn-go { background: linear-gradient(135deg, var(--green), #1a9c3e); color: white; box-shadow: 0 4px 0 #0d6e24; }
+  .btn-blue { background: linear-gradient(135deg, var(--ocean), var(--deep)); color: white; box-shadow: 0 4px 0 var(--deep); margin-bottom: 10px; }
+  .btn-sand { background: linear-gradient(135deg, var(--sand), #e07b3a); color: white; box-shadow: 0 4px 0 #b05a20; }
+  .btn-red { background: linear-gradient(135deg, var(--red), #c1121f); color: white; box-shadow: 0 4px 0 #9d0208; }
+
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .shop-item {
+    border: 2px solid var(--light);
+    border-radius: 12px; padding: 12px; text-align: center;
+  }
+
+  .shop-item .icon { font-size: 2rem; }
+  .shop-item .name { font-weight: 800; font-size: 0.9rem; margin: 4px 0; }
+  .shop-item .price { font-size: 0.8rem; color: #666; }
+  .shop-btns { display: flex; gap: 6px; margin-top: 8px; justify-content: center; }
+
+  .btn-buy-sm {
+    padding: 6px 14px; border: none; border-radius: 8px;
+    background: var(--green); color: white;
+    font-family: 'Cabin Sketch', cursive; font-size: 0.9rem; cursor: pointer;
+  }
+
+  .btn-sell-sm {
+    padding: 6px 14px; border: none; border-radius: 8px;
+    background: var(--sand); color: white;
+    font-family: 'Cabin Sketch', cursive; font-size: 0.9rem; cursor: pointer;
+  }
+
+  .result-box {
+    border-radius: 14px; padding: 16px; background: var(--light);
+    font-size: 0.95rem; line-height: 1.7; display: none;
+  }
+
+  .result-box.show { display: block; }
+  .result-box .good { color: var(--green); font-weight: 800; }
+  .result-box .bad { color: var(--red); font-weight: 800; }
+
+  .log-list { max-height: 180px; overflow-y: auto; font-size: 0.85rem; line-height: 1.8; }
+  .log-item { border-bottom: 1px solid var(--light); padding: 4px 0; }
+  .log-item:last-child { border: none; }
+
+  .final-score {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 3.5rem; color: var(--ocean);
+  }
+
+  .fish-emoji { font-size: 3rem; animation: swim 2s infinite; display: inline-block; }
+  @keyframes swim {
+    0%, 100% { transform: translateX(0) rotate(0deg); }
+    25% { transform: translateX(6px) rotate(5deg); }
+    75% { transform: translateX(-6px) rotate(-5deg); }
+  }
+
+  .warning {
+    background: #fff3cd; border: 2px solid var(--sun);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 0.85rem; font-weight: 700; color: #856404;
+    margin-top: 10px; display: none;
+  }
+
+  .warning.show { display: block; }
+
+  /* LOBBY styles */
+  .pin-display {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 3.5rem; color: var(--ocean);
+    letter-spacing: 8px; text-align: center;
+    background: var(--light); border-radius: 16px;
+    padding: 16px; margin: 12px 0;
+  }
+
+  .big-input {
+    width: 100%; padding: 14px; border: 3px solid var(--light);
+    border-radius: 14px; font-family: 'Cabin Sketch', cursive;
+    font-size: 1.6rem; text-align: center; letter-spacing: 6px;
+    color: var(--dark); outline: none; margin-bottom: 10px;
+  }
+
+  .big-input:focus { border-color: var(--ocean); }
+
+  .name-input {
+    width: 100%; padding: 14px; border: 3px solid var(--light);
+    border-radius: 14px; font-family: 'Nunito', sans-serif;
+    font-size: 1.1rem; color: var(--dark); outline: none; margin-bottom: 10px;
+  }
+
+  .name-input:focus { border-color: var(--ocean); }
+
+  .player-list { list-style: none; }
+
+  .player-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px;
+    background: var(--light); margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .player-item .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    background: var(--ocean); color: white;
+  }
+
+  /* Leaderboard */
+  .lb-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 14px;
+    margin-bottom: 8px; font-weight: 700;
+  }
+
+  .lb-row.first { background: linear-gradient(135deg, #ffd60a, #f4a261); }
+  .lb-row.second { background: linear-gradient(135deg, #dee2e6, #adb5bd); }
+  .lb-row.third { background: linear-gradient(135deg, #cd7f32, #a0522d); color: white; }
+  .lb-row.other { background: var(--light); }
+
+  .lb-rank {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.4rem; min-width: 36px; text-align: center;
+  }
+
+  .lb-name { flex: 1; font-size: 1rem; }
+  .lb-money {
+    font-family: 'Cabin Sketch', cursive;
+    font-size: 1.2rem; color: var(--green);
+  }
+
+  .lb-row.first .lb-money, .lb-row.third .lb-money { color: inherit; }
+
+  .waiting-spinner {
+    text-align: center; padding: 20px;
+    font-size: 1rem; color: #666; font-weight: 700;
+  }
+
+  .waiting-spinner .spin {
+    font-size: 2rem;
+    display: inline-block;
+    animation: spin 1.5s linear infinite;
+  }
+
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .two-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .host-badge {
+    display: inline-block; background: var(--sun);
+    color: var(--dark); border-radius: 8px;
+    padding: 2px 10px; font-size: 0.75rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px; margin-left: 6px;
+  }
+
+  .screen { display: none; width: 100%; max-width: 680px; flex-direction: column; align-items: center; }
+  .screen.active { display: flex; }
+
+  @media (max-width: 400px) {
+    h1 { font-size: 2rem; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .pots-section { grid-template-columns: 1fr; }
+    .shop-grid { grid-template-columns: 1fr; }
+    .pin-display { font-size: 2.5rem; letter-spacing: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🦞 Crayfishing Game</h1>
+<p class="subtitle" id="main-subtitle">Multiplayer</p>
+
+<!-- ==================== SCREEN: HOME ==================== -->
+<div class="screen active" id="screen-home">
+  <div class="card" style="text-align:center">
+    <div class="fish-emoji" style="font-size:4rem">🦞</div>
+    <div class="card-title" style="justify-content:center; font-size:1.8rem; margin-top:8px">Welcome!</div>
+    <p style="color:#555; margin-bottom:20px">Do you want to create a game or join one?</p>
+    <button class="btn btn-go" style="margin-bottom:12px" onclick="showScreen('screen-create')">🎮 Create a Game</button>
+    <button class="btn btn-blue" onclick="showScreen('screen-join')">🔑 Join a Game</button>
+  </div>
+</div>
+
+<!-- ==================== SCREEN: CREATE ==================== -->
+<div class="screen" id="screen-create">
+  <div class="card">
+    <div class="card-title">🎮 Create a Game</div>
+    <label style="font-weight:800; font-size:0.85rem; color:var(--ocean); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px">Your Name</label>
+    <input class="name-input" id="host-name-input" placeholder="Enter your name..." maxlength="20">
+    <button class="btn btn-go" onclick="createGame()">Create Game!</button>
+    <br><br>
+    <button class="btn btn-sand" onclick="showScreen('screen-home')">Back</button>
+  </div>
+</div>
+
+<!-- ==================== SCREEN: JOIN ==================== -->
+<div class="screen" id="screen-join">
+  <div class="card">
+    <div class="card-title">🔑 Join a Game</div>
+    <label style="font-weight:800; font-size:0.85rem; color:var(--ocean); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px">Your Name</label>
+    <input class="name-input" id="join-name-input" placeholder="Enter your name..." maxlength="20">
+    <label style="font-weight:800; font-size:0.85rem; color:var(--ocean); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px; margin-top:12px">Game PIN</label>
+    <input class="big-input" id="pin-input" placeholder="000000" maxlength="6" type="number">
+    <div class="warning" id="join-warning"></div>
+    <button class="btn btn-go" onclick="joinGame()">Join!</button>
+    <br><br>
+    <button class="btn btn-sand" onclick="showScreen('screen-home')">Back</button>
+  </div>
+</div>
+
+<!-- ==================== SCREEN: LOBBY (HOST) ==================== -->
+<div class="screen" id="screen-lobby-host">
+  <div class="card" style="text-align:center">
+    <div class="card-title" style="justify-content:center">🎮 Waiting Room</div>
+    <p style="font-weight:700; color:#555; margin-bottom:4px">Share this PIN with your friends!</p>
+    <div class="pin-display" id="lobby-pin-display">000000</div>
+    <p style="font-size:0.8rem; color:#888; margin-bottom:16px">Players joined: <strong id="lobby-count">1</strong> / 10</p>
+    <ul class="player-list" id="lobby-player-list"></ul>
+    <br>
+    <button class="btn btn-go" id="start-btn" onclick="startGame()">Start Game!</button>
+    <p style="font-size:0.75rem; color:#aaa; margin-top:8px">You can start with any number of players</p>
+  </div>
+</div>
+
+<!-- ==================== SCREEN: LOBBY (PLAYER) ==================== -->
+<div class="screen" id="screen-lobby-player">
+  <div class="card" style="text-align:center">
+    <div class="card-title" style="justify-content:center">🔑 You're In!</div>
+    <p style="font-weight:700; color:#555; margin-bottom:4px">Game PIN</p>
+    <div class="pin-display" id="lobby-pin-player">000000</div>
+    <div class="waiting-spinner">
+      <div class="spin">⚙️</div>
+      <p style="margin-top:8px">Waiting for the host to start...</p>
+    </div>
+    <ul class="player-list" id="lobby-player-list-p"></ul>
+  </div>
+</div>
+
+<!-- ==================== SCREEN: GAME ==================== -->
+<div class="screen" id="screen-game">
+
+  <!-- Stats -->
+  <div class="card" id="g-stats-card">
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Day</div>
+        <div class="stat-value day" id="g-day-display">1 / 15</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Money 💰</div>
+        <div class="stat-value money" id="g-money-display">$0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Boats 🚤</div>
+        <div class="stat-value" id="g-boats-display">1</div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Total Pots 🪣</div>
+        <div class="stat-value" id="g-pots-display">5</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Inside</div>
+        <div class="stat-value" id="g-inside-display">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Outside</div>
+        <div class="stat-value" id="g-outside-display">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shop -->
+  <div class="card" id="g-shop-card">
+    <div class="card-title">🏪 Shop</div>
+    <div class="shop-grid">
+      <div class="shop-item">
+        <div class="icon">🚤</div>
+        <div class="name">Boat</div>
+        <div class="price">Buy $100 | Sell $75</div>
+        <div class="shop-btns">
+          <button class="btn-buy-sm" onclick="buyItem('boat')">Buy</button>
+          <button class="btn-sell-sm" onclick="sellItem('boat')">Sell</button>
+        </div>
+      </div>
+      <div class="shop-item">
+        <div class="icon">🪣</div>
+        <div class="name">Pot</div>
+        <div class="price">Buy $5 | Sell $2</div>
+        <div class="shop-btns">
+          <button class="btn-buy-sm" onclick="buyItem('pot')">Buy</button>
+          <button class="btn-sell-sm" onclick="sellItem('pot')">Sell</button>
+        </div>
+      </div>
+    </div>
+    <div class="warning" id="g-shop-warning"></div>
+  </div>
+
+  <!-- Place pots -->
+  <div class="card" id="g-pots-card">
+    <div class="card-title">🪣 Place Your Pots</div>
+    <div class="pots-section">
+      <div class="pot-box">
+        <label>Inside 🏠</label>
+        <div class="counter">
+          <button class="counter-btn minus" onclick="changePots('inside', -1)">-</button>
+          <span class="counter-val" id="g-inside-input">0</span>
+          <button class="counter-btn plus" onclick="changePots('inside', 1)">+</button>
+        </div>
+        <div class="pot-hint">Good: $2 each | Bad: $4 each</div>
+      </div>
+      <div class="pot-box">
+        <label>Outside 🌊</label>
+        <div class="counter">
+          <button class="counter-btn minus" onclick="changePots('outside', -1)">-</button>
+          <span class="counter-val" id="g-outside-input">0</span>
+          <button class="counter-btn plus" onclick="changePots('outside', 1)">+</button>
+        </div>
+        <div class="pot-hint">Good: $8 each | Bad: lost!</div>
+      </div>
+    </div>
+    <div class="warning" id="g-pots-warning"></div>
+    <button class="btn btn-go" id="g-fish-btn" onclick="submitTurn()">🎣 Go Fishing!</button>
+
+    <!-- Host only: next day button (hidden until all submitted) -->
+    <div id="g-host-controls" style="display:none; margin-top:12px">
+      <div id="g-waiting-msg" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
+      <button class="btn btn-blue" id="g-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="g-result-card" style="display:none">
+    <div class="card-title">📊 Day Result</div>
+    <div class="weather-box" id="g-result-weather"></div>
+    <div class="result-box show" id="g-result-text"></div>
+    <br>
+    <div id="g-result-host-controls" style="display:none">
+      <div id="g-result-waiting" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
+      <button class="btn btn-blue" id="g-result-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
+    </div>
+    <div id="g-result-player-wait" style="display:none" class="waiting-spinner">
+      <div class="spin">⚙️</div>
+      <p style="margin-top:8px">Waiting for host to start next day...</p>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card" id="g-log-card">
+    <div class="card-title">📋 Game Log</div>
+    <div class="log-list" id="g-log-list">
+      <div class="log-item">Game started! Good luck! 🦞</div>
+    </div>
+  </div>
+
+</div><!-- end screen-game -->
+
+<!-- ==================== SCREEN: END ==================== -->
+<div class="screen" id="screen-end">
+  <div class="card">
+    <div style="text-align:center; padding:10px 0 16px">
+      <div class="fish-emoji">🦞</div>
+      <div class="card-title" style="justify-content:center; font-size:1.8rem; margin-top:8px">Game Over!</div>
+      <p style="color:#555; margin-bottom:4px">After 15 days of fishing...</p>
+      <div class="stat-label">Your Final Cash</div>
+      <div class="final-score" id="e-final-score">$0</div>
+      <div id="e-final-msg" style="font-size:1rem; font-weight:700; margin: 8px 0 20px"></div>
+    </div>
+    <div class="card-title">🏆 Leaderboard</div>
+    <div id="e-leaderboard"></div>
+    <br>
+    <button class="btn btn-go" onclick="showScreen('screen-home')">🔄 Play Again</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SUPABASE CONFIG
+// ============================================================
+const SUPABASE_URL = 'https://gepksbhttkxweegcemxj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlcGtzYmh0dGt4d2VlZ2NlbXhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTYyODcsImV4cCI6MjA5NTI3MjI4N30.5kges5Obbs8YE0LnlY_NgfSd6EKBrpuLAfxmepkbQl0';
+
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+async function dbGet(table, filter) {
+  const url = SUPABASE_URL + '/rest/v1/' + table + '?' + filter;
+  const r = await fetch(url, { headers: HEADERS });
+  return r.json();
+}
+
+async function dbInsert(table, data) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+    method: 'POST', headers: HEADERS, body: JSON.stringify(data)
+  });
+  return r.json();
+}
+
+async function dbUpdate(table, filter, data) {
+  const url = SUPABASE_URL + '/rest/v1/' + table + '?' + filter;
+  const r = await fetch(url, {
+    method: 'PATCH', headers: HEADERS, body: JSON.stringify(data)
+  });
+  return r.json();
+}
+
+// ============================================================
+// GLOBAL STATE
+// ============================================================
+let myPlayerId = null;
+let myGameId = null;
+let myPin = null;
+let isHost = false;
+let pollInterval = null;
+let lastWeather = null;
+
+let state = {
+  day: 1,
+  money: 0,
+  boats: 1,
+  pots: 5,
+  potsInside: 0,
+  potsOutside: 0,
+  submitted: false
+};
+
+// ============================================================
+// SCREEN NAVIGATION
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ============================================================
+// CREATE GAME
+// ============================================================
+async function createGame() {
+  const name = document.getElementById('host-name-input').value.trim();
+  if (!name) { alert('Please enter your name!'); return; }
+
+  const pin = String(Math.floor(100000 + Math.random() * 900000));
+  myPin = pin;
+  isHost = true;
+
+  // Create game row
+  const games = await dbInsert('cray_games', {
+    pin: pin,
+    status: 'waiting',
+    day: 1,
+    weather: null,
+    last_weather: null
+  });
+
+  if (!games || games.length === 0 || games.error) {
+    alert('Could not create game. Check your Supabase setup!');
+    console.error(games);
+    return;
+  }
+
+  myGameId = games[0].id;
+
+  // Add host as player
+  const players = await dbInsert('cray_players', {
+    game_id: myGameId,
+    name: name,
+    is_host: true,
+    money: 0,
+    boats: 1,
+    pots: 5,
+    submitted: false,
+    day_inside: 0,
+    day_outside: 0
+  });
+
+  myPlayerId = players[0].id;
+
+  document.getElementById('lobby-pin-display').textContent = pin;
+  showScreen('screen-lobby-host');
+  startLobbyPoll();
+}
+
+// ============================================================
+// JOIN GAME
+// ============================================================
+async function joinGame() {
+  const name = document.getElementById('join-name-input').value.trim();
+  const pin = document.getElementById('pin-input').value.trim();
+  const warning = document.getElementById('join-warning');
+  warning.classList.remove('show');
+
+  if (!name) { warning.textContent = 'Please enter your name!'; warning.classList.add('show'); return; }
+  if (pin.length !== 6) { warning.textContent = 'PIN must be 6 digits!'; warning.classList.add('show'); return; }
+
+  // Find game
+  const games = await dbGet('cray_games', 'pin=eq.' + pin + '&status=eq.waiting');
+  if (!games || games.length === 0) {
+    warning.textContent = 'Game not found! Check the PIN.';
+    warning.classList.add('show');
+    return;
+  }
+
+  myGameId = games[0].id;
+  myPin = pin;
+  isHost = false;
+
+  // Count players
+  const existing = await dbGet('cray_players', 'game_id=eq.' + myGameId);
+  if (existing.length >= 10) {
+    warning.textContent = 'This game is full (10 players max)!';
+    warning.classList.add('show');
+    return;
+  }
+
+  const players = await dbInsert('cray_players', {
+    game_id: myGameId,
+    name: name,
+    is_host: false,
+    money: 0,
+    boats: 1,
+    pots: 5,
+    submitted: false,
+    day_inside: 0,
+    day_outside: 0
+  });
+
+  myPlayerId = players[0].id;
+
+  document.getElementById('lobby-pin-player').textContent = pin;
+  showScreen('screen-lobby-player');
+  startLobbyPoll();
+}
+
+// ============================================================
+// LOBBY POLLING
+// ============================================================
+function startLobbyPoll() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(lobbyPoll, 2000);
+}
+
+async function lobbyPoll() {
+  if (!myGameId) return;
+
+  const [game] = await dbGet('cray_games', 'id=eq.' + myGameId);
+  if (!game) return;
+
+  const players = await dbGet('cray_players', 'game_id=eq.' + myGameId + '&order=created_at.asc');
+
+  // Update player lists
+  renderPlayerList('lobby-player-list', players);
+  renderPlayerList('lobby-player-list-p', players);
+  document.getElementById('lobby-count').textContent = players.length;
+
+  // Game started
+  if (game.status === 'playing') {
+    clearInterval(pollInterval);
+    startGameScreen(game, players);
+  }
+}
+
+function renderPlayerList(listId, players) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  const emojis = ['🦞','🎣','🚤','🌊','⚓','🪣','🐟','🦀','🐙','🌴'];
+  list.innerHTML = players.map((p, i) =>
+    `<li class="player-item">
+      <div class="avatar">${emojis[i % emojis.length]}</div>
+      <span>${p.name}${p.is_host ? '<span class="host-badge">Host</span>' : ''}</span>
+    </li>`
+  ).join('');
+}
+
+// ============================================================
+// START GAME (host only)
+// ============================================================
+async function startGame() {
+  const weather = getWeather(null);
+  await dbUpdate('cray_games', 'id=eq.' + myGameId, {
+    status: 'playing',
+    day: 1,
+    weather: weather,
+    last_weather: weather
+  });
+}
+
+// ============================================================
+// GAME SCREEN SETUP
+// ============================================================
+function startGameScreen(game, players) {
+  const me = players.find(p => p.id === myPlayerId);
+  if (!me) return;
+
+  state = {
+    day: game.day,
+    money: me.money,
+    boats: me.boats,
+    pots: me.pots,
+    potsInside: 0,
+    potsOutside: 0,
+    submitted: false
+  };
+
+  lastWeather = game.last_weather;
+
+  // Show/hide host controls
+  document.getElementById('g-host-controls').style.display = isHost ? 'block' : 'none';
+  document.getElementById('g-result-host-controls').style.display = isHost ? 'block' : 'none';
+  document.getElementById('g-result-player-wait').style.display = isHost ? 'none' : 'block';
+
+  showScreen('screen-game');
+  updateDisplay();
+  startGamePoll();
+}
+
+// ============================================================
+// GAME POLLING
+// ============================================================
+function startGamePoll() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(gamePoll, 2000);
+}
+
+async function gamePoll() {
+  if (!myGameId) return;
+
+  const [game] = await dbGet('cray_games', 'id=eq.' + myGameId);
+  if (!game) return;
+
+  const players = await dbGet('cray_players', 'game_id=eq.' + myGameId + '&order=money.desc');
+
+  // Count submitted
+  const submitted = players.filter(p => p.submitted).length;
+  const total = players.length;
+
+  if (isHost) {
+    document.getElementById('g-waiting-msg').textContent = submitted + ' / ' + total + ' players ready';
+    document.getElementById('g-result-waiting').textContent = submitted + ' / ' + total + ' players ready';
+    const allDone = submitted === total;
+    document.getElementById('g-nextday-btn').style.display = allDone ? 'block' : 'none';
+    document.getElementById('g-result-nextday-btn').style.display = allDone ? 'block' : 'none';
+  }
+
+  // Game ended
+  if (game.status === 'ended') {
+    clearInterval(pollInterval);
+    showEndScreen(players);
+    return;
+  }
+
+  // Day advanced by host
+  if (game.day > state.day) {
+    processDayResult(game, players);
+  }
+}
+
+// ============================================================
+// SUBMIT TURN
+// ============================================================
+async function submitTurn() {
+  if (state.submitted) return;
+  state.submitted = true;
+
+  document.getElementById('g-fish-btn').disabled = true;
+  document.getElementById('g-fish-btn').textContent = '✅ Ready!';
+
+  await dbUpdate('cray_players', 'id=eq.' + myPlayerId, {
+    submitted: true,
+    day_inside: state.potsInside,
+    day_outside: state.potsOutside,
+    boats: state.boats,
+    pots: state.pots,
+    money: state.money
+  });
+}
+
+// ============================================================
+// HOST: NEXT DAY
+// ============================================================
+async function hostNextDay() {
+  const [game] = await dbGet('cray_games', 'id=eq.' + myGameId);
+  const players = await dbGet('cray_players', 'game_id=eq.' + myGameId);
+
+  const weather = getWeather(game.last_weather);
+  const newDay = game.day + 1;
+
+  // Process each player
+  for (const p of players) {
+    let income = 0;
+    let lostPots = 0;
+    const inside = p.day_inside || 0;
+    const outside = p.day_outside || 0;
+
+    if (weather === 'good') {
+      income = inside * 2 + outside * 8;
+    } else {
+      income = inside * 4;
+      lostPots = outside;
+    }
+
+    const newMoney = p.money + income;
+    const newPots = p.pots - lostPots;
+
+    await dbUpdate('cray_players', 'id=eq.' + p.id, {
+      money: newMoney,
+      pots: Math.max(0, newPots),
+      submitted: false,
+      day_inside: 0,
+      day_outside: 0
+    });
+  }
+
+  if (newDay > 15) {
+    await dbUpdate('cray_games', 'id=eq.' + myGameId, { status: 'ended', day: newDay, weather: weather, last_weather: weather });
+  } else {
+    await dbUpdate('cray_games', 'id=eq.' + myGameId, { day: newDay, weather: weather, last_weather: weather });
+  }
+}
+
+// ============================================================
+// PROCESS DAY RESULT (shown to each player)
+// ============================================================
+async function processDayResult(game, players) {
+  const me = players.find(p => p.id === myPlayerId);
+  if (!me) return;
+
+  const weather = game.weather;
+  const inside = state.potsInside;
+  const outside = state.potsOutside;
+
+  let income = 0;
+  let lostPots = 0;
+  let lines = [];
+
+  if (weather === 'good') {
+    const ii = inside * 2;
+    const oi = outside * 8;
+    income = ii + oi;
+    if (inside > 0) lines.push('<span class="good">+$' + ii + '</span> from ' + inside + ' pots inside ($2 each)');
+    if (outside > 0) lines.push('<span class="good">+$' + oi + '</span> from ' + outside + ' pots outside ($8 each)');
+  } else {
+    const ii = inside * 4;
+    income = ii;
+    lostPots = outside;
+    if (inside > 0) lines.push('<span class="good">+$' + ii + '</span> from ' + inside + ' pots inside ($4 each)');
+    if (outside > 0) lines.push('<span class="bad">' + outside + ' outside pots were lost in the storm! 🌊</span>');
+  }
+
+  // Update local state from DB
+  state.day = game.day;
+  state.money = me.money;
+  state.pots = me.pots;
+  state.potsInside = 0;
+  state.potsOutside = 0;
+  state.submitted = false;
+  lastWeather = game.last_weather;
+
+  const resultText = document.getElementById('g-result-text');
+  resultText.innerHTML = (lines.length ? lines.join('<br>') : 'You had no pots out!') + '<br><strong>Total earned: $' + income + '</strong>';
+
+  const wb = document.getElementById('g-result-weather');
+  if (weather === 'good') {
+    wb.className = 'weather-box weather-good';
+    wb.textContent = '☀️ Good Weather!';
+  } else {
+    wb.className = 'weather-box weather-bad';
+    wb.textContent = '⛈️ Bad Weather!';
+  }
+
+  addLog('Day ' + (game.day - 1) + ': ' + (weather === 'good' ? '☀️ Good' : '⛈️ Bad') + ' weather. Earned $' + income + (lostPots > 0 ? ', lost ' + lostPots + ' pots.' : '.'));
+
+  document.getElementById('g-pots-card').style.display = 'none';
+  document.getElementById('g-shop-card').style.display = 'none';
+  document.getElementById('g-result-card').style.display = 'block';
+
+  // Re-enable fishing button for next day
+  document.getElementById('g-fish-btn').disabled = false;
+  document.getElementById('g-fish-btn').textContent = '🎣 Go Fishing!';
+
+  updateDisplay();
+
+  // If game ended, poll will handle it
+}
+
+// ============================================================
+// END SCREEN
+// ============================================================
+function showEndScreen(players) {
+  const me = players.find(p => p.id === myPlayerId);
+  document.getElementById('e-final-score').textContent = '$' + (me ? me.money : 0);
+
+  const myMoney = me ? me.money : 0;
+  let msg = '';
+  if (myMoney >= 500) msg = '🏆 Crayfish legend!';
+  else if (myMoney >= 300) msg = '🎉 Great fishing!';
+  else if (myMoney >= 150) msg = '👍 Not bad!';
+  else msg = '😅 Tough seas!';
+  document.getElementById('e-final-msg').textContent = msg;
+
+  const medals = ['🥇','🥈','🥉'];
+  const rowClasses = ['first','second','third','other'];
+  const lb = document.getElementById('e-leaderboard');
+  lb.innerHTML = players.map((p, i) =>
+    `<div class="lb-row ${rowClasses[Math.min(i, 3)]}">
+      <div class="lb-rank">${medals[i] || (i+1)}</div>
+      <div class="lb-name">${p.name}${p.id === myPlayerId ? ' (You)' : ''}${p.is_host ? '<span class="host-badge">Host</span>' : ''}</div>
+      <div class="lb-money">$${p.money}</div>
+    </div>`
+  ).join('');
+
+  showScreen('screen-end');
+}
+
+// ============================================================
+// SHOP / POTS (same as stage 1)
+// ============================================================
+function changePots(type, amount) {
+  const warning = document.getElementById('g-pots-warning');
+  warning.classList.remove('show');
+  const maxPots = state.boats * 10;
+
+  if (type === 'inside') {
+    const nv = state.potsInside + amount;
+    if (nv < 0) return;
+    if (nv > state.pots) { warning.textContent = "You don't have that many pots!"; warning.classList.add('show'); return; }
+    if (nv + state.potsOutside > maxPots) { warning.textContent = "Boats can only carry " + maxPots + " pots!"; warning.classList.add('show'); return; }
+    if (nv + state.potsOutside > state.pots) { warning.textContent = "Not enough pots!"; warning.classList.add('show'); return; }
+    state.potsInside = nv;
+  } else {
+    const nv = state.potsOutside + amount;
+    if (nv < 0) return;
+    if (nv > state.pots) { warning.textContent = "You don't have that many pots!"; warning.classList.add('show'); return; }
+    if (nv + state.potsInside > maxPots) { warning.textContent = "Boats can only carry " + maxPots + " pots!"; warning.classList.add('show'); return; }
+    if (nv + state.potsInside > state.pots) { warning.textContent = "Not enough pots!"; warning.classList.add('show'); return; }
+    state.potsOutside = nv;
+  }
+  updateDisplay();
+}
+
+function buyItem(item) {
+  const warning = document.getElementById('g-shop-warning');
+  warning.classList.remove('show');
+  if (item === 'boat') {
+    if (state.money < 100) { warning.textContent = "You need $100 to buy a boat!"; warning.classList.add('show'); return; }
+    state.money -= 100; state.boats++;
+    addLog('Day ' + state.day + ': Bought a boat. 🚤');
+  } else {
+    if (state.money < 5) { warning.textContent = "You need $5 to buy a pot!"; warning.classList.add('show'); return; }
+    state.money -= 5; state.pots++;
+    addLog('Day ' + state.day + ': Bought a pot. 🪣');
+  }
+  updateDisplay();
+}
+
+function sellItem(item) {
+  const warning = document.getElementById('g-shop-warning');
+  warning.classList.remove('show');
+  if (item === 'boat') {
+    if (state.boats <= 1) { warning.textContent = "You need at least 1 boat!"; warning.classList.add('show'); return; }
+    state.boats--; state.money += 75;
+    const maxPots = state.boats * 10;
+    if (state.potsInside + state.potsOutside > maxPots) {
+      state.potsInside = Math.min(state.potsInside, maxPots);
+      state.potsOutside = Math.min(state.potsOutside, maxPots - state.potsInside);
+    }
+    addLog('Day ' + state.day + ': Sold a boat. 🚤');
+  } else {
+    if (state.pots <= 0) { warning.textContent = "No pots to sell!"; warning.classList.add('show'); return; }
+    state.pots--; state.money += 2;
+    if (state.potsInside > state.pots) state.potsInside = state.pots;
+    if (state.potsOutside > state.pots - state.potsInside) state.potsOutside = state.pots - state.potsInside;
+    addLog('Day ' + state.day + ': Sold a pot. 🪣');
+  }
+  updateDisplay();
+}
+
+// ============================================================
+// WEATHER
+// ============================================================
+function getWeather(last) {
+  const roll = Math.ceil(Math.random() * 6);
+  if (roll <= 3) return 'good';
+  if (roll === 4) return last || 'good';
+  return 'bad';
+}
+
+// ============================================================
+// DISPLAY
+// ============================================================
+function updateDisplay() {
+  document.getElementById('g-day-display').textContent = state.day + ' / 15';
+  document.getElementById('g-money-display').textContent = '$' + state.money;
+  document.getElementById('g-boats-display').textContent = state.boats;
+  document.getElementById('g-pots-display').textContent = state.pots;
+  document.getElementById('g-inside-display').textContent = state.potsInside;
+  document.getElementById('g-outside-display').textContent = state.potsOutside;
+  document.getElementById('g-inside-input').textContent = state.potsInside;
+  document.getElementById('g-outside-input').textContent = state.potsOutside;
+}
+
+function addLog(text) {
+  const list = document.getElementById('g-log-list');
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.textContent = text;
+  list.prepend(item);
+}
+
+// Show result card when next day starts
+function showPotsCard() {
+  document.getElementById('g-result-card').style.display = 'none';
+  document.getElementById('g-shop-card').style.display = 'block';
+  document.getElementById('g-pots-card').style.display = 'block';
+  document.getElementById('g-shop-warning').classList.remove('show');
+  document.getElementById('g-pots-warning').classList.remove('show');
+}
+</script>
+
+</body>
+</html>
