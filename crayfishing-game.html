@@ -520,7 +520,7 @@
     <br>
     <!-- Player: tap ready then wait for host -->
     <div id="g-result-player-controls" style="display:none">
-      <button class="btn btn-go" id="g-result-ready-btn" onclick="playerReady()">✅ I'm Ready!</button>
+      <button class="btn btn-go" id="g-result-ready-btn" onclick="playerContinue()">✅ I'm Ready!</button>
       <div id="g-result-player-wait" class="waiting-spinner" style="display:none">
         <div class="spin">⚙️</div>
         <p style="margin-top:8px">Waiting for host to start next day...</p>
@@ -605,6 +605,7 @@ let myPin = null;
 let isHost = false;
 let pollInterval = null;
 let lastWeather = null;
+let dayResultShown = false; // track if we already showed result for current day
 
 let state = {
   day: 1,
@@ -635,7 +636,6 @@ async function createGame() {
   myPin = pin;
   isHost = true;
 
-  // Create game row
   const games = await dbInsert('cray_games', {
     pin: pin,
     status: 'waiting',
@@ -652,7 +652,6 @@ async function createGame() {
 
   myGameId = games[0].id;
 
-  // Add host as player
   const players = await dbInsert('cray_players', {
     game_id: myGameId,
     name: name,
@@ -684,7 +683,6 @@ async function joinGame() {
   if (!name) { warning.textContent = 'Please enter your name!'; warning.classList.add('show'); return; }
   if (pin.length !== 6) { warning.textContent = 'PIN must be 6 digits!'; warning.classList.add('show'); return; }
 
-  // Find game
   const games = await dbGet('cray_games', 'pin=eq.' + pin + '&status=eq.waiting');
   if (!games || games.length === 0) {
     warning.textContent = 'Game not found! Check the PIN.';
@@ -696,7 +694,6 @@ async function joinGame() {
   myPin = pin;
   isHost = false;
 
-  // Count players
   const existing = await dbGet('cray_players', 'game_id=eq.' + myGameId);
   if (existing.length >= 10) {
     warning.textContent = 'This game is full (10 players max)!';
@@ -733,18 +730,14 @@ function startLobbyPoll() {
 
 async function lobbyPoll() {
   if (!myGameId) return;
-
   const [game] = await dbGet('cray_games', 'id=eq.' + myGameId);
   if (!game) return;
-
   const players = await dbGet('cray_players', 'game_id=eq.' + myGameId + '&order=created_at.asc');
 
-  // Update player lists
   renderPlayerList('lobby-player-list', players);
   renderPlayerList('lobby-player-list-p', players);
   document.getElementById('lobby-count').textContent = players.length;
 
-  // Game started
   if (game.status === 'playing') {
     clearInterval(pollInterval);
     startGameScreen(game, players);
@@ -793,12 +786,26 @@ function startGameScreen(game, players) {
     submitted: false
   };
 
+  dayResultShown = false;
   lastWeather = game.last_weather;
 
-  // Show/hide host controls
-  document.getElementById('g-host-controls').style.display = isHost ? 'block' : 'none';
-  document.getElementById('g-result-host-controls').style.display = isHost ? 'block' : 'none';
-  document.getElementById('g-result-player-wait').style.display = isHost ? 'none' : 'block';
+  // Show host controls only for host
+  if (isHost) {
+    document.getElementById('g-host-controls').style.display = 'block';
+    document.getElementById('g-nextday-btn').style.display = 'none';
+    document.getElementById('g-result-host-controls').style.display = 'block';
+    document.getElementById('g-result-nextday-btn').style.display = 'none';
+    document.getElementById('g-result-player-controls').style.display = 'none';
+  } else {
+    document.getElementById('g-host-controls').style.display = 'none';
+    document.getElementById('g-result-host-controls').style.display = 'none';
+    document.getElementById('g-result-player-controls').style.display = 'none';
+  }
+
+  // Make sure shop and pots are visible, result hidden
+  document.getElementById('g-shop-card').style.display = 'block';
+  document.getElementById('g-pots-card').style.display = 'block';
+  document.getElementById('g-result-card').style.display = 'none';
 
   showScreen('screen-game');
   updateDisplay();
@@ -821,18 +828,6 @@ async function gamePoll() {
 
   const players = await dbGet('cray_players', 'game_id=eq.' + myGameId + '&order=money.desc');
 
-  // Count submitted
-  const submitted = players.filter(p => p.submitted).length;
-  const total = players.length;
-
-  if (isHost) {
-    document.getElementById('g-waiting-msg').textContent = submitted + ' / ' + total + ' players ready';
-    document.getElementById('g-result-waiting').textContent = submitted + ' / ' + total + ' players ready';
-    const allDone = submitted === total;
-    document.getElementById('g-nextday-btn').style.display = allDone ? 'block' : 'none';
-    document.getElementById('g-result-nextday-btn').style.display = allDone ? 'block' : 'none';
-  }
-
   // Game ended
   if (game.status === 'ended') {
     clearInterval(pollInterval);
@@ -840,19 +835,118 @@ async function gamePoll() {
     return;
   }
 
-  // Day advanced by host - open next round for everyone
+  // Update host next-day button based on who has submitted
+  if (isHost) {
+    const submitted = players.filter(p => p.submitted).length;
+    const total = players.length;
+    const waitMsg = submitted + ' / ' + total + ' players ready';
+    document.getElementById('g-waiting-msg').textContent = waitMsg;
+    document.getElementById('g-result-waiting').textContent = waitMsg;
+    // Show next day button only when ALL players submitted AND result has been shown
+    const allDone = submitted === total && total > 0;
+    document.getElementById('g-nextday-btn').style.display = (allDone && !dayResultShown) ? 'none' : (allDone ? 'block' : 'none');
+    document.getElementById('g-result-nextday-btn').style.display = allDone ? 'block' : 'none';
+  }
+
+  // New day started by host - show result then open next round
   if (game.day > state.day) {
+    const prevDay = state.day;
+    const prevWeather = game.weather;
+    const me = players.find(p => p.id === myPlayerId);
+
+    // Show result for the round that just ended
+    showDayResult(prevWeather, me);
+
+    // Update local state to new day
     state.day = game.day;
     state.submitted = false;
-    const me = players.find(p => p.id === myPlayerId);
+    state.potsInside = 0;
+    state.potsOutside = 0;
     if (me) {
       state.money = me.money;
       state.pots = me.pots;
     }
     lastWeather = game.last_weather;
-    showPotsCard();
+    dayResultShown = true;
     updateDisplay();
   }
+}
+
+// ============================================================
+// SHOW DAY RESULT
+// ============================================================
+function showDayResult(weather, me) {
+  const inside = state.potsInside;
+  const outside = state.potsOutside;
+  let income = 0;
+  let lostPots = 0;
+  let lines = [];
+
+  if (weather === 'good') {
+    const ii = inside * 2;
+    const oi = outside * 8;
+    income = ii + oi;
+    if (inside > 0) lines.push('<span class="good">+$' + ii + '</span> from ' + inside + ' pots inside ($2 each)');
+    if (outside > 0) lines.push('<span class="good">+$' + oi + '</span> from ' + outside + ' pots outside ($8 each)');
+  } else {
+    const ii = inside * 4;
+    income = ii;
+    lostPots = outside;
+    if (inside > 0) lines.push('<span class="good">+$' + ii + '</span> from ' + inside + ' pots inside ($4 each)');
+    if (outside > 0) lines.push('<span class="bad">' + outside + ' pots lost in the storm! 🌊</span>');
+  }
+
+  document.getElementById('g-result-text').innerHTML =
+    (lines.length ? lines.join('<br>') : 'You had no pots out!') +
+    '<br><strong>Total earned: $' + income + '</strong>';
+
+  const wb = document.getElementById('g-result-weather');
+  if (weather === 'good') {
+    wb.className = 'weather-box weather-good';
+    wb.textContent = '☀️ Good Weather!';
+  } else {
+    wb.className = 'weather-box weather-bad';
+    wb.textContent = '⛈️ Bad Weather!';
+  }
+
+  addLog('Day ' + state.day + ': ' + (weather === 'good' ? '☀️ Good' : '⛈️ Bad') +
+    ' weather. Earned $' + income + (lostPots > 0 ? ', lost ' + lostPots + ' pots.' : '.'));
+
+  // Show result card, hide pots/shop
+  document.getElementById('g-pots-card').style.display = 'none';
+  document.getElementById('g-shop-card').style.display = 'none';
+  document.getElementById('g-result-card').style.display = 'block';
+  document.getElementById('g-player-submitted-wait').style.display = 'none';
+
+  // Reset fishing button
+  document.getElementById('g-fish-btn').disabled = false;
+  document.getElementById('g-fish-btn').textContent = '🎣 Go Fishing!';
+
+  // Show "Continue" button for players, next-day controls for host
+  if (isHost) {
+    document.getElementById('g-result-host-controls').style.display = 'block';
+    document.getElementById('g-result-player-controls').style.display = 'none';
+  } else {
+    document.getElementById('g-result-player-controls').style.display = 'block';
+    document.getElementById('g-result-host-controls').style.display = 'none';
+    // Reset ready button
+    const readyBtn = document.getElementById('g-result-ready-btn');
+    readyBtn.disabled = false;
+    readyBtn.textContent = '▶️ Continue to Next Round';
+    document.getElementById('g-result-player-wait').style.display = 'none';
+  }
+}
+
+// ============================================================
+// PLAYER: CONTINUE TO NEXT ROUND
+// ============================================================
+function playerContinue() {
+  document.getElementById('g-result-card').style.display = 'none';
+  document.getElementById('g-shop-card').style.display = 'block';
+  document.getElementById('g-pots-card').style.display = 'block';
+  document.getElementById('g-shop-warning').classList.remove('show');
+  document.getElementById('g-pots-warning').classList.remove('show');
+  dayResultShown = false;
 }
 
 // ============================================================
@@ -863,7 +957,7 @@ async function submitTurn() {
   state.submitted = true;
 
   document.getElementById('g-fish-btn').disabled = true;
-  document.getElementById('g-fish-btn').textContent = '✅ Ready!';
+  document.getElementById('g-fish-btn').textContent = '✅ Submitted!';
 
   if (!isHost) {
     document.getElementById('g-player-submitted-wait').style.display = 'block';
@@ -880,26 +974,21 @@ async function submitTurn() {
 }
 
 // ============================================================
-// PLAYER: MARK READY FOR NEXT DAY
-// ============================================================
-async function playerReady() {
-  document.getElementById('g-result-ready-btn').disabled = true;
-  document.getElementById('g-result-ready-btn').textContent = '✅ Ready!';
-  document.getElementById('g-result-player-wait').style.display = 'block';
-  await dbUpdate('cray_players', 'id=eq.' + myPlayerId, { submitted: true });
-}
-
-// ============================================================
 // HOST: NEXT DAY
 // ============================================================
 async function hostNextDay() {
+  // Disable button to prevent double click
+  const btn = document.getElementById('g-result-nextday-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processing...';
+
   const [game] = await dbGet('cray_games', 'id=eq.' + myGameId);
   const players = await dbGet('cray_players', 'game_id=eq.' + myGameId);
 
   const weather = getWeather(game.last_weather);
   const newDay = game.day + 1;
 
-  // Process each player
+  // Process income for each player
   for (const p of players) {
     let income = 0;
     let lostPots = 0;
@@ -913,12 +1002,9 @@ async function hostNextDay() {
       lostPots = outside;
     }
 
-    const newMoney = p.money + income;
-    const newPots = p.pots - lostPots;
-
     await dbUpdate('cray_players', 'id=eq.' + p.id, {
-      money: newMoney,
-      pots: Math.max(0, newPots),
+      money: p.money + income,
+      pots: Math.max(0, p.pots - lostPots),
       submitted: false,
       day_inside: 0,
       day_outside: 0
@@ -926,86 +1012,25 @@ async function hostNextDay() {
   }
 
   if (newDay > 15) {
-    await dbUpdate('cray_games', 'id=eq.' + myGameId, { status: 'ended', day: newDay, weather: weather, last_weather: weather });
+    await dbUpdate('cray_games', 'id=eq.' + myGameId, {
+      status: 'ended', day: newDay, weather: weather, last_weather: weather
+    });
   } else {
-    await dbUpdate('cray_games', 'id=eq.' + myGameId, { day: newDay, weather: weather, last_weather: weather });
-  }
-}
-
-// ============================================================
-// PROCESS DAY RESULT (shown to each player)
-// ============================================================
-async function processDayResult(game, players) {
-  const me = players.find(p => p.id === myPlayerId);
-  if (!me) return;
-
-  const weather = game.weather;
-  const inside = state.potsInside;
-  const outside = state.potsOutside;
-
-  let income = 0;
-  let lostPots = 0;
-  let lines = [];
-
-  if (weather === 'good') {
-    const ii = inside * 2;
-    const oi = outside * 8;
-    income = ii + oi;
-    if (inside > 0) lines.push('<span class="good">+$' + ii + '</span> from ' + inside + ' pots inside ($2 each)');
-    if (outside > 0) lines.push('<span class="good">+$' + oi + '</span> from ' + outside + ' pots outside ($8 each)');
-  } else {
-    const ii = inside * 4;
-    income = ii;
-    lostPots = outside;
-    if (inside > 0) lines.push('<span class="good">+$' + ii + '</span> from ' + inside + ' pots inside ($4 each)');
-    if (outside > 0) lines.push('<span class="bad">' + outside + ' outside pots were lost in the storm! 🌊</span>');
+    await dbUpdate('cray_games', 'id=eq.' + myGameId, {
+      day: newDay, weather: weather, last_weather: weather
+    });
   }
 
-  // Update local state from DB
-  state.day = game.day;
-  state.money = me.money;
-  state.pots = me.pots;
-  state.potsInside = 0;
-  state.potsOutside = 0;
+  // Host continues to next round immediately
+  dayResultShown = false;
   state.submitted = false;
-  lastWeather = game.last_weather;
-
-  const resultText = document.getElementById('g-result-text');
-  resultText.innerHTML = (lines.length ? lines.join('<br>') : 'You had no pots out!') + '<br><strong>Total earned: $' + income + '</strong>';
-
-  const wb = document.getElementById('g-result-weather');
-  if (weather === 'good') {
-    wb.className = 'weather-box weather-good';
-    wb.textContent = '☀️ Good Weather!';
-  } else {
-    wb.className = 'weather-box weather-bad';
-    wb.textContent = '⛈️ Bad Weather!';
-  }
-
-  addLog('Day ' + (game.day - 1) + ': ' + (weather === 'good' ? '☀️ Good' : '⛈️ Bad') + ' weather. Earned $' + income + (lostPots > 0 ? ', lost ' + lostPots + ' pots.' : '.'));
-
-  document.getElementById('g-pots-card').style.display = 'none';
-  document.getElementById('g-shop-card').style.display = 'none';
-  document.getElementById('g-result-card').style.display = 'block';
-  document.getElementById('g-player-submitted-wait').style.display = 'none';
-
-  // Re-enable fishing button for next day
-  document.getElementById('g-fish-btn').disabled = false;
-  document.getElementById('g-fish-btn').textContent = '🎣 Go Fishing!';
-
-  // Show correct controls
-  if (isHost) {
-    document.getElementById('g-result-host-controls').style.display = 'block';
-    document.getElementById('g-result-player-controls').style.display = 'none';
-  } else {
-    document.getElementById('g-result-player-controls').style.display = 'block';
-    document.getElementById('g-result-host-controls').style.display = 'none';
-    document.getElementById('g-result-ready-btn').disabled = false;
-    document.getElementById('g-result-ready-btn').textContent = '✅ I\'m Ready!';
-    document.getElementById('g-result-player-wait').style.display = 'none';
-  }
-
-  updateDisplay();
+  document.getElementById('g-result-card').style.display = 'none';
+  document.getElementById('g-shop-card').style.display = 'block';
+  document.getElementById('g-pots-card').style.display = 'block';
+  document.getElementById('g-shop-warning').classList.remove('show');
+  document.getElementById('g-pots-warning').classList.remove('show');
+  btn.disabled = false;
+  btn.textContent = '➡️ Next Day for Everyone';
 }
 
 // ============================================================
@@ -1038,7 +1063,7 @@ function showEndScreen(players) {
 }
 
 // ============================================================
-// SHOP / POTS (same as stage 1)
+// SHOP / POTS
 // ============================================================
 function changePots(type, amount) {
   const warning = document.getElementById('g-pots-warning');
@@ -1048,14 +1073,14 @@ function changePots(type, amount) {
   if (type === 'inside') {
     const nv = state.potsInside + amount;
     if (nv < 0) return;
-    if (nv > state.pots) { warning.textContent = "You don't have that many pots!"; warning.classList.add('show'); return; }
+    if (nv > state.pots) { warning.textContent = "You don\'t have that many pots!"; warning.classList.add('show'); return; }
     if (nv + state.potsOutside > maxPots) { warning.textContent = "Boats can only carry " + maxPots + " pots!"; warning.classList.add('show'); return; }
     if (nv + state.potsOutside > state.pots) { warning.textContent = "Not enough pots!"; warning.classList.add('show'); return; }
     state.potsInside = nv;
   } else {
     const nv = state.potsOutside + amount;
     if (nv < 0) return;
-    if (nv > state.pots) { warning.textContent = "You don't have that many pots!"; warning.classList.add('show'); return; }
+    if (nv > state.pots) { warning.textContent = "You don\'t have that many pots!"; warning.classList.add('show'); return; }
     if (nv + state.potsInside > maxPots) { warning.textContent = "Boats can only carry " + maxPots + " pots!"; warning.classList.add('show'); return; }
     if (nv + state.potsInside > state.pots) { warning.textContent = "Not enough pots!"; warning.classList.add('show'); return; }
     state.potsOutside = nv;
@@ -1132,7 +1157,6 @@ function addLog(text) {
   list.prepend(item);
 }
 
-// Show result card when next day starts
 function showPotsCard() {
   document.getElementById('g-result-card').style.display = 'none';
   document.getElementById('g-shop-card').style.display = 'block';
