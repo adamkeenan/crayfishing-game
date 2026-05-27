@@ -845,7 +845,12 @@ async function gamePoll() {
     // Show next day button only when ALL players submitted AND result has been shown
     const allDone = submitted === total && total > 0;
     document.getElementById('g-nextday-btn').style.display = allDone ? 'block' : 'none';
-    document.getElementById('g-result-nextday-btn').style.display = allDone ? 'block' : 'none';
+    // Always show next day button in result card for host, but grey it out until all ready
+    const nextDayBtn = document.getElementById('g-result-nextday-btn');
+    nextDayBtn.style.display = 'block';
+    nextDayBtn.disabled = !allDone;
+    nextDayBtn.textContent = allDone ? '➡️ Next Day for Everyone' : '⏳ Waiting for players... (' + submitted + '/' + total + ')';
+    nextDayBtn.style.opacity = allDone ? '1' : '0.5';
   }
 
   // New day started by host - show result then open next round
