@@ -931,10 +931,15 @@ function showDayResult(weather, me) {
   if (isHost) {
     document.getElementById('g-result-host-controls').style.display = 'block';
     document.getElementById('g-result-player-controls').style.display = 'none';
+    // Always show the next day button for host
+    const btn = document.getElementById('g-result-nextday-btn');
+    btn.style.display = 'block';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = '➡️ Next Day for Everyone';
   } else {
     document.getElementById('g-result-player-controls').style.display = 'block';
     document.getElementById('g-result-host-controls').style.display = 'none';
-    // Reset ready button
     const readyBtn = document.getElementById('g-result-ready-btn');
     readyBtn.disabled = false;
     readyBtn.textContent = '▶️ Continue to Next Round';
