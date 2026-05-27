@@ -844,7 +844,7 @@ async function gamePoll() {
     document.getElementById('g-result-waiting').textContent = waitMsg;
     // Show next day button only when ALL players submitted AND result has been shown
     const allDone = submitted === total && total > 0;
-    document.getElementById('g-nextday-btn').style.display = (allDone && !dayResultShown) ? 'none' : (allDone ? 'block' : 'none');
+    document.getElementById('g-nextday-btn').style.display = allDone ? 'block' : 'none';
     document.getElementById('g-result-nextday-btn').style.display = allDone ? 'block' : 'none';
   }
 
