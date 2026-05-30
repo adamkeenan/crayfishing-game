@@ -836,16 +836,16 @@ async function gamePoll() {
   }
 
   // Update host next-day button based on who has submitted
-  if (isHost) {
+  // Skip this when the result screen is already showing (dayResultShown = true)
+  // so we don't overwrite the "Continue to Next Day" button the host needs to click
+  if (isHost && !dayResultShown) {
     const submitted = players.filter(p => p.submitted).length;
     const total = players.length;
     const waitMsg = submitted + ' / ' + total + ' players ready';
     document.getElementById('g-waiting-msg').textContent = waitMsg;
     document.getElementById('g-result-waiting').textContent = waitMsg;
-    // Show next day button only when ALL players submitted AND result has been shown
     const allDone = submitted === total && total > 0;
     document.getElementById('g-nextday-btn').style.display = allDone ? 'block' : 'none';
-    // Always show next day button in result card for host, but grey it out until all ready
     const nextDayBtn = document.getElementById('g-result-nextday-btn');
     nextDayBtn.style.display = 'block';
     nextDayBtn.disabled = !allDone;
@@ -987,10 +987,8 @@ async function submitTurn() {
 // HOST: NEXT DAY
 // ============================================================
 async function hostNextDay() {
-  // Disable button to prevent double click
   const btn = document.getElementById('g-result-nextday-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Processing...';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing...'; }
 
   const [game] = await dbGet('cray_games', 'id=eq.' + myGameId);
   const players = await dbGet('cray_players', 'game_id=eq.' + myGameId);
@@ -998,20 +996,19 @@ async function hostNextDay() {
   const weather = getWeather(game.last_weather);
   const newDay = game.day + 1;
 
-  // Process income for each player
+  // Process income for each player and track the host's own earnings
+  let myIncome = 0, myLostPots = 0;
   for (const p of players) {
-    let income = 0;
-    let lostPots = 0;
+    let income = 0, lostPots = 0;
     const inside = p.day_inside || 0;
     const outside = p.day_outside || 0;
-
     if (weather === 'good') {
       income = inside * 2 + outside * 8;
     } else {
       income = inside * 4;
       lostPots = outside;
     }
-
+    if (p.id === myPlayerId) { myIncome = income; myLostPots = lostPots; }
     await dbUpdate('cray_players', 'id=eq.' + p.id, {
       money: p.money + income,
       pots: Math.max(0, p.pots - lostPots),
@@ -1031,16 +1028,45 @@ async function hostNextDay() {
     });
   }
 
-  // Host continues to next round immediately
-  dayResultShown = false;
+  // Show the result for the day just finished (uses state.potsInside/Outside before reset)
+  showDayResult(weather, null);
+
+  // Update host's local state to the new day — this stops the background checker
+  // from re-triggering the result screen when it sees the day changed
+  state.day = newDay;
+  state.money += myIncome;
+  state.pots = Math.max(0, state.pots - myLostPots);
   state.submitted = false;
+  state.potsInside = 0;
+  state.potsOutside = 0;
+  lastWeather = weather;
+  dayResultShown = true;
+  updateDisplay();
+
+  // Change button to "Continue" so the host doesn't accidentally process the day again
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = '▶️ Continue to Next Day';
+    btn.setAttribute('onclick', 'hostContinue()');
+  }
+}
+
+// ============================================================
+// HOST: CONTINUE AFTER SEEING RESULT
+// ============================================================
+function hostContinue() {
   document.getElementById('g-result-card').style.display = 'none';
   document.getElementById('g-shop-card').style.display = 'block';
   document.getElementById('g-pots-card').style.display = 'block';
   document.getElementById('g-shop-warning').classList.remove('show');
   document.getElementById('g-pots-warning').classList.remove('show');
-  btn.disabled = false;
-  btn.textContent = '➡️ Next Day for Everyone';
+  dayResultShown = false;
+  const btn = document.getElementById('g-result-nextday-btn');
+  if (btn) {
+    btn.setAttribute('onclick', 'hostNextDay()');
+    btn.textContent = '➡️ Next Day for Everyone';
+  }
 }
 
 // ============================================================
