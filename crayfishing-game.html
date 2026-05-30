@@ -500,16 +500,17 @@
     <div class="warning" id="g-pots-warning"></div>
     <button class="btn btn-go" id="g-fish-btn" onclick="submitTurn()">🎣 Go Fishing!</button>
 
-    <!-- Host only: next day button (hidden until all submitted) -->
-    <div id="g-host-controls" style="display:none; margin-top:12px">
-      <div id="g-waiting-msg" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
-      <button class="btn btn-blue" id="g-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
-    </div>
     <!-- Player submitted waiting message -->
     <div id="g-player-submitted-wait" style="display:none" class="waiting-spinner">
       <div class="spin">⚙️</div>
       <p style="margin-top:8px">Waiting for host to advance the day...</p>
     </div>
+  </div>
+
+  <!-- Host only: next day controls (outside pots card so host can still advance when eliminated) -->
+  <div class="card" id="g-host-controls" style="display:none">
+    <div id="g-waiting-msg" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
+    <button class="btn btn-blue" id="g-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
   </div>
 
   <!-- Result -->
@@ -531,6 +532,14 @@
       <div id="g-result-waiting" style="text-align:center; font-size:0.85rem; color:#888; font-weight:700; margin-bottom:8px"></div>
       <button class="btn btn-blue" id="g-result-nextday-btn" onclick="hostNextDay()" style="display:none">➡️ Next Day for Everyone</button>
     </div>
+  </div>
+
+  <!-- Eliminated card -->
+  <div class="card" id="g-eliminated-card" style="display:none; text-align:center; padding:28px 24px">
+    <div style="font-size:3.5rem; margin-bottom:8px">😢</div>
+    <div class="card-title" style="justify-content:center; font-size:1.6rem">You're Out!</div>
+    <p style="color:#555; margin-bottom:10px">You have <strong>no pots</strong> and not enough money to buy more.</p>
+    <p style="color:#888; font-size:0.9rem; font-weight:700">Sit back and watch the other players finish... 🦞</p>
   </div>
 
   <!-- Log -->
@@ -833,6 +842,37 @@ async function gamePoll() {
     clearInterval(pollInterval);
     showEndScreen(players);
     return;
+  }
+
+  // Elimination check: no pots AND can't afford to buy one ($5 each)
+  // Only triggers at the start of a fresh turn (submitted=false) so mid-day shop buys don't falsely eliminate
+  const me = players.find(p => p.id === myPlayerId);
+  const isEliminated = me && !me.submitted && me.pots === 0 && me.money < 5;
+
+  if (isEliminated) {
+    // Auto-submit with 0 pots so this player doesn't block others from advancing
+    if (state.submitted === false) {
+      state.submitted = true;
+      await dbUpdate('cray_players', 'id=eq.' + myPlayerId, {
+        submitted: true, day_inside: 0, day_outside: 0
+      });
+    }
+    // Keep day in sync so we auto-submit again next round
+    if (game.day > state.day) {
+      state.day = game.day;
+      state.money = me.money;
+      state.pots = me.pots;
+      state.submitted = false;
+    }
+    // Show the eliminated card, hide the playing cards
+    document.getElementById('g-shop-card').style.display = 'none';
+    document.getElementById('g-pots-card').style.display = 'none';
+    document.getElementById('g-result-card').style.display = 'none';
+    document.getElementById('g-player-submitted-wait').style.display = 'none';
+    document.getElementById('g-eliminated-card').style.display = 'block';
+    updateDisplay();
+    // Non-host players stop here; host still needs to fall through to run day-advance controls
+    if (!isHost) return;
   }
 
   // Update host next-day button based on who has submitted
